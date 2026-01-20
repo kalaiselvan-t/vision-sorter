@@ -10,6 +10,6 @@ sudo apt update
 
 # rosdep
 rosdep update
-rosdep install --from-paths  --ignore-src -r -y
+rosdep install --from-paths  src --ignore-src -r -y
 
 exec "$@"

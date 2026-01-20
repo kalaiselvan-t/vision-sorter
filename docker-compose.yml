@@ -1,4 +1,5 @@
 services:
+  # The main ROS 2 container for Franka control
   franka_ros2:
     build:
       context: .
@@ -7,10 +8,23 @@ services:
         - USER_UID=${USER_UID}
         - USER_GID=${USER_GID}
     container_name: franka_ros2
+
+    # NETWORK MODE: "host"
+    # This is crucial for ROS 2. It allows the container to share the host's network stack directly.
+    # This means NO port mapping is needed (no -p 80:80). The container uses the host's IP.
+    # It enables seamless ROS 2 discovery via Multicast (DDS) between host and container.
     network_mode: "host"
+
+    # IPC & PID: "host"
+    # ipc: host allows using shared memory (crucial for high-performance ROS transport like iceoryx).
+    # pid: host allows the container to see host processes (useful for debugging/monitoring).
     ipc: "host"
     pid: host
+
+    # PRIVILEGED: true
+    # Gives the container full access to host devices (needed for hardware access like robot controllers).
     privileged: true
+
     command: /bin/bash
     tty: true
     stdin_open: true
@@ -21,6 +35,44 @@ services:
     environment:
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
+      # ROS_DOMAIN_ID must be the SAME for all containers/computers effectively on the same network that need to talk.
+      ROS_DOMAIN_ID: 0
+      ROS_LOCALHOST_ONLY: 0
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+
+    # REAL-TIME CAPABILITIES
+    # These settings allow the container to run real-time processes (critical for robot control loops).
+    cap_add:
+      - SYS_NICE
+    ulimits:
+      rtprio: 99
+      rttime: -1
+      memlock: 8428281856
+
+  # Secondary container for listening, data collection, or debugging
+  data_collection:
+    build:
+      context: .
+      dockerfile: Dockerfile.datacollection
+      args:
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
+    container_name: data_collection
+
+    # Must use host networking to talk to franka_ros2 easily
+    network_mode: "host"
+    ipc: "host"
+    pid: host
+    privileged: true
+    command: /bin/bash
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./:/ros2_ws/src
+      - /home/kalai/Documents/data_collection:/data_collection
+    environment:
+      # CHANGED: Msg ID must be 0 to match franka_ros2 so they can communicate!
+      # If one is 0 and the other is 1, they are effectively on different "channels".
       ROS_DOMAIN_ID: 0
       ROS_LOCALHOST_ONLY: 0
       FASTDDS_BUILTIN_TRANSPORTS: UDPv4
