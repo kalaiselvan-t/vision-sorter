@@ -114,5 +114,5 @@ docker-compose.unified.yml
 models/*.pth
 
 # Dependency packages
-franka_description/
+moveit_task_constructor/
 libfranka/

@@ -212,8 +212,7 @@ ros2 run franka_pick_place vision_pipeline_node
 
 **Terminal 3: Spawn cubes**
 ```bash
-source install/setup.bash
-ros2 run franka_pick_place spawn_multiple_cubes.py --count 3
+python3 spawn_multiple_cubes.py 3
 ```
 
 The robot will automatically detect and pick the cubes!

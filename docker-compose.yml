@@ -15,9 +15,8 @@ services:
     tty: true
     stdin_open: true
     volumes:
-      - /home/kalai/Dev/projects/pick-and-place:/ros2_ws
+      - ./:/ros2_ws/src
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ./limits.conf:/etc/security/limits.conf
       - /dev:/dev
     environment:
       QT_X11_NO_MITSHM: 1
@@ -31,51 +30,3 @@ services:
       rtprio: 99
       rttime: -1
       memlock: 8428281856
-  openvla:
-    build:
-      context: .
-      dockerfile: Dockerfile.openvla
-    container_name: openvla
-    network_mode: "host"
-    ipc: "host"
-    pid: host
-    runtime: nvidia
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      - ROS_DOMAIN_ID=0
-      - ROS_LOCALHOST_ONLY=0
-      - FASTDDS_BUILTIN_TRANSPORTS=UDPv4
-    volumes:
-      - /home/kalai/Dev/projects/openvla_ws:/openvla_ws
-      - /home/kalai/.cache/huggingface:/root/.cache/huggingface
-    stdin_open: true
-    tty: true
-    command: /bin/bash
-
-  smolvla:
-    build:
-      context: .
-      dockerfile: Dockerfile.smolvla
-    container_name: smolvla
-    network_mode: "host"
-    ipc: host
-    pid: host
-    runtime: nvidia
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      - ROS_DOMAIN_ID=0
-      - ROS_LOCALHOST_ONLY=0
-      - FASTDDS_BUILTIN_TRANSPORTS=UDPv4
-      - HF_HOME=/root/.cache/huggingface
-    volumes:
-      # Mount a new smolvla workspace
-      - /home/kalai/Dev/projects/smolvla_ws:/smolvla_ws
-      # Share HuggingFace cache (so models are downloaded once)
-      - /home/kalai/.cache/huggingface:/root/.cache/huggingface
-      # Mount your test image
-      - /home/kalai/Dev/projects:/host_projects:ro
-    stdin_open: true
-    tty: true
-    command: /bin/bash
