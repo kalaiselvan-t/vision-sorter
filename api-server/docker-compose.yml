@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  api-server:
+    build: .
+    container_name: intrinsic-api-server
+    # Use host networking to easily talk to storage and potential ROS nodes
+    network_mode: "host"
+    environment:
+      - DB_HOST=127.0.0.1
+      - DB_PORT=5432
+      - DB_NAME=robotdata
+      - DB_USER=datauser
+      - DB_PASS=datapass123
+      - MINIO_ENDPOINT=127.0.0.1:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+    volumes:
+      - ./app:/app/app
+    restart: unless-stopped
