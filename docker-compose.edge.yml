@@ -3,6 +3,7 @@ version: '3.8'
 services:
   # The main ROS 2 container for Franka control
   franka_ros2:
+    image: franka-ros2-edge:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -61,6 +62,7 @@ services:
 
   # Data Collector Agent
   data_collection:
+    image: data-collection-edge:latest
     build:
       context: .
       dockerfile: Dockerfile.datacollection
@@ -77,7 +79,7 @@ services:
     tty: true
     stdin_open: true
     volumes:
-      - ./ros2_ws:/ros2_ws
+      - ${WORKSPACE_DIR:-./ros2_ws}:/ros2_ws/
     environment:
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
       ROS_LOCALHOST_ONLY: 0

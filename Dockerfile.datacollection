@@ -84,8 +84,8 @@ RUN apt-get update && \
 RUN pip3 install --no-cache-dir \
     minio \
     psycopg2-binary \
-    opencv-python \
-    "numpy<2" \
+    'opencv-python<4.10' \
+    'numpy<2' \
     h5py \
     pyyaml
 

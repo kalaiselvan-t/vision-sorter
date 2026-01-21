@@ -116,3 +116,8 @@ models/*.pth
 # Dependency packages
 moveit_task_constructor/
 libfranka/
+
+# Docker volumes
+minio-data/
+timescale-data/
+pgadmin-data/
