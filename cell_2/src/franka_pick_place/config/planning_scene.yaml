@@ -1,0 +1,80 @@
+# Planning Scene Configuration
+# Static collision objects for the pick-and-place workspace
+
+planning_scene:
+  world:
+    collision_objects:
+      # Work Table
+      - id: "work_table"
+        type: "box"
+        dimensions: [0.5, 0.5, 0.05]  # x, y, z in meters
+        pose:
+          position:
+            x: 0.6
+            y: 0.0
+            z: 0.025  # Half of height (5cm / 2)
+          orientation:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+            w: 1.0
+
+      # Green Bin (front-left)
+      - id: "green_bin"
+        type: "box"
+        dimensions: [0.15, 0.15, 0.115]  # 15cm x 15cm x 11.5cm
+        pose:
+          position:
+            x: 0.45
+            y: 0.45
+            z: 0.0575  # Half of height (11.5cm / 2)
+          orientation:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+            w: 1.0
+
+      # Black Bin (back-left)
+      - id: "black_bin"
+        type: "box"
+        dimensions: [0.15, 0.15, 0.115]
+        pose:
+          position:
+            x: 0.65
+            y: 0.45
+            z: 0.0575
+          orientation:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+            w: 1.0
+
+      # Red Bin (front-right)
+      - id: "red_bin"
+        type: "box"
+        dimensions: [0.15, 0.15, 0.115]
+        pose:
+          position:
+            x: 0.45
+            y: -0.45
+            z: 0.0575
+          orientation:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+            w: 1.0
+
+      # Blue Bin (back-right)
+      - id: "blue_bin"
+        type: "box"
+        dimensions: [0.15, 0.15, 0.115]
+        pose:
+          position:
+            x: 0.65
+            y: -0.45
+            z: 0.0575
+          orientation:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+            w: 1.0

@@ -1,0 +1,10 @@
+franka_pick_place_node:
+  ros__parameters:
+    cube_subscription_topic: "/vision/detected_cube_pose"
+    cube_position_change_tolerance: 0.05
+    cube_orientation_change_tolerance: 1.0  # in degrees
+    cube_size: 0.03
+    approach_distance: 0.15
+    pre_grasp_distance: 0.06
+    lift_distance: 0.08
+    place_approach_distance: 0.30

@@ -1,0 +1,83 @@
+version: '3.8'
+
+# Phase 1: Storage Infrastructure for Data Collection Pipeline
+# MinIO (S3-compatible object storage) + TimescaleDB (time-series database)
+#
+# NETWORKING STRATEGY:
+# - franka_ros2 and data_collection containers use network_mode: "host" for ROS2
+# - Storage containers expose ports to host network
+# - Data collector accesses storage via localhost (host network)
+
+services:
+  # MinIO - Object storage for videos, images, and large binary files
+  minio:
+    image: minio/minio:latest
+    container_name: data-storage-minio
+    ports:
+      - "9000:9000" # API port (accessible via localhost:9000 from host network)
+      - "9001:9001" # Web Console port
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MinIO Client - Initialize buckets and policies
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    # Connect to MinIO via localhost (host network)
+    entrypoint: >
+      /bin/sh -c " sleep 5; mc alias set myminio http://host.docker.internal:9000 minioadmin minioadmin123 || mc alias set myminio http://172.17.0.1:9000 minioadmin minioadmin123; mc mb myminio/raw-episodes --ignore-existing; mc mb myminio/processed-datasets --ignore-existing; mc anonymous set download myminio/raw-episodes; mc anonymous set download myminio/processed-datasets; echo 'MinIO buckets initialized successfully'; "
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # TimescaleDB - PostgreSQL with time-series extensions
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: data-storage-timescaledb
+    ports:
+      - "5432:5432" # Exposed to host network (accessible via localhost:5432)
+    environment:
+      POSTGRES_USER: datauser
+      POSTGRES_PASSWORD: datapass123
+      POSTGRES_DB: robotdata
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+      - ./storage/init-schema.sql:/docker-entrypoint-initdb.d/init-schema.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U datauser -d robotdata" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin - Web GUI for PostgreSQL/TimescaleDB
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: data-storage-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - timescaledb
+
+volumes:
+  minio-data:
+    name: minio-data
+  timescale-data:
+    name: timescale-data
+  pgadmin-data:
+    name: pgadmin-data

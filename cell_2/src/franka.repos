@@ -1,0 +1,13 @@
+repositories:
+  franka_description:
+    type: git
+    url: https://github.com/frankarobotics/franka_description.git
+    version: 1.0.1
+  libfranka:
+    type: git
+    url: https://github.com/frankarobotics/libfranka.git
+    version: 0.15.0
+  moveit_task_constructor:
+    type: git
+    url: https://github.com/moveit/moveit_task_constructor.git
+    version: humble

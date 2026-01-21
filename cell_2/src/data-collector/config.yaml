@@ -1,0 +1,88 @@
+# Data Collector Configuration
+
+# Storage Configuration
+# NOTE: Since data_collection container uses network_mode: "host",
+# it accesses storage services via localhost (published ports from docker-compose.storage.yml)
+storage:
+  minio:
+    endpoint: "localhost:9000"    # MinIO accessible on host network
+    access_key: "minioadmin"
+    secret_key: "minioadmin123"
+    bucket: "raw-episodes"
+    secure: false
+  
+  timescaledb:
+    host: "localhost"             # TimescaleDB accessible on host network
+    port: 5432
+    database: "robotdata"
+    user: "datauser"
+    password: "datapass123"
+
+# ROS2 Topic Subscriptions
+topics:
+  # Joint states (100 Hz typical)
+  joint_states:
+    topic: "/joint_states"
+    msg_type: "sensor_msgs/msg/JointState"
+    queue_size: 10
+  
+  # End-effector pose
+  ee_pose:
+    topic: "/ee_pose"
+    msg_type: "geometry_msgs/msg/PoseStamped"
+    queue_size: 10
+  
+  # Force/Torque sensor
+  force_torque:
+    topic: "/force_torque"
+    msg_type: "geometry_msgs/msg/WrenchStamped"
+    queue_size: 10
+  
+  # RGB Camera
+  rgb_camera:
+    topic: "/rgbd_camera/image"
+    msg_type: "sensor_msgs/msg/Image"
+    queue_size: 5
+  
+  # Depth Camera (optional)
+  depth_camera:
+    topic: "/rgbd_camera/depth_image"
+    msg_type: "sensor_msgs/msg/Image"
+    queue_size: 5
+
+# Data Collection Settings
+collection:
+  # Episode naming
+  episode_prefix: "episode"
+  
+  # Buffer sizes (to prevent memory overflow)
+  max_buffer_size_mb: 500
+  
+  # Synchronization tolerance (seconds)
+  # Messages within this window are considered synchronized
+  sync_tolerance_sec: 0.01
+  
+  # Video encoding
+  video:
+    codec: "libx264"          # H.264 codec
+    fps: 30
+    quality: 23               # CRF value (lower = better quality, 18-28 recommended)
+    preset: "medium"          # Encoding speed (ultrafast, fast, medium, slow, veryslow)
+  
+  # Upload settings
+  upload:
+    chunk_size_mb: 10         # Upload in chunks
+    retry_attempts: 3
+    retry_delay_sec: 5
+  
+  # Quality checks
+  quality:
+    check_missing_frames: true
+    max_frame_gap_ms: 100     # Alert if frames are >100ms apart
+    check_timestamp_monotonic: true
+
+# Logging
+logging:
+  level: "INFO"               # DEBUG, INFO, WARNING, ERROR
+  log_to_file: true
+  log_file: "/tmp/data_collector.log"

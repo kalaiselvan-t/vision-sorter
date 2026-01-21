@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # The main ROS 2 container for Franka control
+  franka_ros2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - USER_UID=${USER_UID:-1000}
+        - USER_GID=${USER_GID:-1000}
+    container_name: ${COMPOSE_PROJECT_NAME:-edge}_franka_ros2
+
+    # GPU Runtime Configuration
+    runtime: nvidia
+
+    # HOST NETWORKING
+    # Crucial for ROS 2 performance and DDS discovery between containers
+    network_mode: "host"
+    ipc: "host"
+    pid: host
+    privileged: true
+
+    command: /bin/bash
+    tty: true
+    stdin_open: true
+    volumes:
+      - ${WORKSPACE_DIR:-./ros2_ws}:/ros2_ws/
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /dev:/dev
+    environment:
+      QT_X11_NO_MITSHM: 1
+      DISPLAY: ${DISPLAY}
+      VNC_PORT: ${VNC_PORT}
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      ROS_LOCALHOST_ONLY: 0
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+      IGN_PARTITION: ${COMPOSE_PROJECT_NAME}
+      # GPU/Rendering configuration
+      LIBGL_ALWAYS_SOFTWARE: 0
+      GALLIUM_DRIVER: llvmpipe
+      # NVIDIA GPU Configuration
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+      # Force GPU rendering
+      __GLX_VENDOR_LIBRARY_NAME: nvidia
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu, utility, compute, graphics ]
+    cap_add:
+      - SYS_NICE
+    ulimits:
+      rtprio: 99
+      rttime: -1
+      memlock: 8428281856
+
+  # Data Collector Agent
+  data_collection:
+    build:
+      context: .
+      dockerfile: Dockerfile.datacollection
+      args:
+        - USER_UID=${USER_UID:-1000}
+        - USER_GID=${USER_GID:-1000}
+    container_name: ${COMPOSE_PROJECT_NAME:-edge}_data_collection
+
+    network_mode: "host"
+    ipc: "host"
+    pid: host
+    privileged: true
+    command: /bin/bash
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./ros2_ws:/ros2_ws
+    environment:
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      ROS_LOCALHOST_ONLY: 0
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+      # Point to Cloud services running on the host
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      MINIO_ENDPOINT: 127.0.0.1:9000
+    cap_add:
+      - SYS_NICE
+    ulimits:
+      rtprio: 99
+      rttime: -1
+      memlock: 8428281856

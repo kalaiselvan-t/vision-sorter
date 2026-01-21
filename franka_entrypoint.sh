@@ -12,4 +12,7 @@ sudo apt update
 rosdep update
 rosdep install --from-paths  src --ignore-src -r -y
 
+# Setup workspace environment (VNC, etc)
+source /usr/local/bin/setup_workspace.sh
+
 exec "$@"

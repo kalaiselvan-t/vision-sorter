@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # STORAGE LAYER
+  # ---------------------------------------------------------------------------
+  
+  # MinIO - Object storage for videos, images
+  minio:
+    image: minio/minio:latest
+    container_name: cloud-minio
+    ports:
+      - "9000:9000" # API
+      - "9001:9001" # Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - cloud-net
+
+  # MinIO Client - Initialize buckets
+  minio-init:
+    image: minio/mc:latest
+    container_name: cloud-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - cloud-net
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set myminio http://minio:9000 minioadmin minioadmin123;
+      mc mb myminio/raw-episodes --ignore-existing;
+      mc mb myminio/processed-datasets --ignore-existing;
+      mc anonymous set download myminio/raw-episodes;
+      mc anonymous set download myminio/processed-datasets;
+      echo 'MinIO buckets initialized successfully';
+      "
+
+  # TimescaleDB - Metadata storage
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: cloud-timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: datauser
+      POSTGRES_PASSWORD: datapass123
+      POSTGRES_DB: robotdata
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+      - ./storage/init-schema.sql:/docker-entrypoint-initdb.d/init-schema.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U datauser -d robotdata" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cloud-net
+
+  # pgAdmin - DB GUI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cloud-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - timescaledb
+    networks:
+      - cloud-net
+
+  # ---------------------------------------------------------------------------
+  # APPLICATION LAYER
+  # ---------------------------------------------------------------------------
+
+  # API Server - Backend Logic
+  api-server:
+    build: 
+      context: ./api-server
+    container_name: cloud-api-server
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=timescaledb
+      - DB_PORT=5432
+      - DB_NAME=robotdata
+      - DB_USER=datauser
+      - DB_PASS=datapass123
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - cloud-net
+    restart: always
+
+  # Dashboard - Frontend UI
+  dashboard:
+    build:
+      context: ./dashboard
+    container_name: cloud-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://api-server:8000
+    depends_on:
+      - api-server
+    networks:
+      - cloud-net
+
+networks:
+  cloud-net:
+    driver: bridge
+
+volumes:
+  minio-data:
+  timescale-data:
+  pgadmin-data:

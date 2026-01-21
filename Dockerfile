@@ -32,43 +32,56 @@ ARG USERNAME=user
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        # Essential development tools (minimized for smaller image)
-        bash-completion \
-        curl \
-        git \
-        sudo \
-        # ROS build and development tools
-        python3-colcon-argcomplete \
-        python3-colcon-common-extensions \
-        python3-vcstool \
-        # Gazebo simulation packages
-        ros-humble-ros-gz \
-        ros-humble-sdformat-urdf \
-        libignition-gazebo6-dev \
-        libignition-plugin-dev \
-        # Visualization and GUI
-        ros-humble-rviz2 \
-        ros-humble-moveit-ros-visualization \
-        # MoveIt motion planning stack
-        ros-humble-moveit-ros-move-group \
-        ros-humble-moveit-kinematics \
-        ros-humble-moveit-planners-ompl \
-        ros-humble-moveit-simple-controller-manager \
-        # ros2_control framework (core packages only, no testing tools)
-        ros-humble-ros2-control \
-        ros-humble-ros2-controllers \
-        ros-humble-ros2controlcli \
-        ros-humble-controller-manager \
-        ros-humble-controller-interface \
-        ros-humble-hardware-interface \
-        ros-humble-control-msgs \
-        ros-humble-joint-state-broadcaster \
-        ros-humble-joint-trajectory-controller \
-        # Essential utilities
-        ros-humble-joint-state-publisher \
-        ros-humble-xacro \
-        ros-humble-realtime-tools \
-        ros-humble-generate-parameter-library \
+    # Essential development tools (minimized for smaller image)
+    bash-completion \
+    curl \
+    git \
+    sudo \
+    # ROS build and development tools
+    python3-colcon-argcomplete \
+    python3-colcon-common-extensions \
+    python3-vcstool \
+    # Gazebo simulation packages
+    ros-humble-ros-gz \
+    ros-humble-sdformat-urdf \
+    libignition-gazebo6-dev \
+    libignition-plugin-dev \
+    # Visualization and GUI
+    ros-humble-rviz2 \
+    ros-humble-moveit-ros-visualization \
+    # MoveIt motion planning stack
+    ros-humble-moveit-ros-move-group \
+    ros-humble-moveit-kinematics \
+    ros-humble-moveit-planners-ompl \
+    ros-humble-moveit-simple-controller-manager \
+    # ros2_control framework (core packages only, no testing tools)
+    ros-humble-ros2-control \
+    ros-humble-ros2-controllers \
+    ros-humble-ros2controlcli \
+    ros-humble-controller-manager \
+    ros-humble-controller-interface \
+    ros-humble-hardware-interface \
+    ros-humble-control-msgs \
+    ros-humble-joint-state-broadcaster \
+    ros-humble-joint-trajectory-controller \
+    # Essential utilities
+    ros-humble-joint-state-publisher \
+    ros-humble-xacro \
+    ros-humble-realtime-tools \
+    ros-humble-generate-parameter-library \
+    # Graphics and GPU support for Gazebo/RViz
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+    libglu1-mesa \
+    mesa-utils \
+    libglvnd0 \
+    libglx0 \
+    libegl1 \
+    xvfb \
+    x11-utils \
+    x11vnc \
+    fluxbox \
+    net-tools \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -96,7 +109,8 @@ RUN groupadd --gid $USER_GID $USERNAME \
 # ============================================================================
 
 COPY ./franka_entrypoint.sh /franka_entrypoint.sh
-RUN chmod +x /franka_entrypoint.sh
+COPY ./setup_workspace.sh /usr/local/bin/setup_workspace.sh
+RUN chmod +x /franka_entrypoint.sh /usr/local/bin/setup_workspace.sh
 
 # ============================================================================
 # LAYER: Final configuration

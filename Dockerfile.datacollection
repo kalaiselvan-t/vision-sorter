@@ -85,7 +85,7 @@ RUN pip3 install --no-cache-dir \
     minio \
     psycopg2-binary \
     opencv-python \
-    numpy \
+    "numpy<2" \
     h5py \
     pyyaml
 
@@ -120,7 +120,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
 # ============================================================================
 
 USER $USERNAME
-WORKDIR /
+WORKDIR /ros2_ws
 
 # Container configuration
 CMD [ "/bin/bash" ]
