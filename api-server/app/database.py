@@ -21,14 +21,27 @@ class DatabaseClient:
             cursor_factory=RealDictCursor
         )
 
-    def get_episodes(self, limit: int = 100, task_type: str = None):
+    def get_episodes(self, limit: int = 100, task_type: str = None, success: bool = None):
         with self.get_connection() as conn:
             with conn.cursor() as cur:
                 query = "SELECT * FROM episodes"
                 params = []
+                conditions = []
+                
                 if task_type:
-                    query += " WHERE task_type = %s"
+                    conditions.append("task_type = %s")
                     params.append(task_type)
+                
+                if success is not None:
+                    if success is False:
+                        conditions.append("(success = %s OR success IS NULL)")
+                    else:
+                        conditions.append("success = %s")
+                    params.append(success)
+                
+                if conditions:
+                    query += " WHERE " + " AND ".join(conditions)
+                
                 query += " ORDER BY start_time DESC LIMIT %s"
                 params.append(limit)
                 
@@ -46,6 +59,15 @@ class DatabaseClient:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT * FROM robot_states WHERE episode_id = %s ORDER BY time ASC",
+                    (episode_id,)
+                )
+                return cur.fetchall()
+
+    def get_camera_streams(self, episode_id: int):
+        with self.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM camera_streams WHERE episode_id = %s",
                     (episode_id,)
                 )
                 return cur.fetchall()

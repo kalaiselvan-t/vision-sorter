@@ -21,18 +21,22 @@ class LeRobotExportService:
         """
         Gathers data for multiple episodes and packs them into LeRobot v3.0 format.
         """
-        self.log(dataset_name, "Starting export")
+        self.log(dataset_name, f"Starting export for episodes: {episode_ids}")
         # Create a temporary root directory for the dataset
         tmp_dir = tempfile.mkdtemp()
         data_dir = os.path.join(tmp_dir, "data/chunk-000")
         meta_dir = os.path.join(tmp_dir, "meta")
+        videos_dir = os.path.join(tmp_dir, "videos")
+        
         os.makedirs(data_dir, exist_ok=True)
         os.makedirs(meta_dir, exist_ok=True)
+        os.makedirs(videos_dir, exist_ok=True)
 
         try:
             all_frames = []
             episodes_meta = []
             total_frames = 0
+            camera_names = set()
 
             # 1. Process each episode
             for idx, ep_id in enumerate(episode_ids):
@@ -46,6 +50,30 @@ class LeRobotExportService:
                 if not states:
                     self.log(dataset_name, f"No states for episode {ep_id}")
                     continue
+
+                # Handle Videos
+                streams = self.db.get_camera_streams(ep_id)
+                for s in streams:
+                    cam_name = s["camera_name"]
+                    camera_names.add(cam_name)
+                    cam_dir = os.path.join(videos_dir, f"observation.images.{cam_name}")
+                    os.makedirs(cam_dir, exist_ok=True)
+                    
+                    # Download video from MinIO
+                    # LeRobot v3.0 expects videos to be organized by camera
+                    # We'll save as episode_{idx}.mp4 for simplicity per episode
+                    video_filename = f"episode_{idx}.mp4"
+                    local_video_path = os.path.join(cam_dir, video_filename)
+                    
+                    try:
+                        self.storage.client.fget_object(
+                            "raw-episodes", 
+                            s["minio_object_path"], 
+                            local_video_path
+                        )
+                        self.log(dataset_name, f"Downloaded video {s['minio_object_path']} to {local_video_path}")
+                    except Exception as ve:
+                        self.log(dataset_name, f"Failed to download video {s['minio_object_path']}: {str(ve)}")
 
                 ep_start_frame = total_frames
                 for frame_idx, s in enumerate(states):
@@ -74,6 +102,10 @@ class LeRobotExportService:
                     "success": bool(ep_meta["success"])
                 })
 
+            if total_frames == 0:
+                self.log(dataset_name, "No data collected across all episodes. Aborting.")
+                return
+
             self.log(dataset_name, f"Total frames: {total_frames}")
 
             # 2. Write Data Parquet (Chunk 000)
@@ -90,15 +122,24 @@ class LeRobotExportService:
             self.log(dataset_name, "Episode metadata parquet written")
 
             # 4. Generate info.json
+            features = {
+                "observation.state": {"dtype": "float32", "shape": [7]},
+                "action": {"dtype": "float32", "shape": [7]},
+                "timestamp": {"dtype": "float32", "shape": []}
+            }
+            # Add image features
+            for cam in camera_names:
+                features[f"observation.images.{cam}"] = {
+                    "dtype": "video",
+                    "shape": [3, 480, 640], # Assuming default, ideal to get from DB
+                    "names": ["channels", "height", "width"]
+                }
+
             info = {
                 "name": dataset_name,
                 "version": "3.0",
                 "fps": 30,
-                "features": {
-                    "observation.state": {"dtype": "float32", "shape": [7]},
-                    "action": {"dtype": "float32", "shape": [7]},
-                    "timestamp": {"dtype": "float32", "shape": []}
-                },
+                "features": features,
                 "total_frames": total_frames,
                 "total_episodes": len(episodes_meta)
             }
@@ -106,9 +147,22 @@ class LeRobotExportService:
                 json.dump(info, f, indent=2)
 
             # 5. Generate stats.json
+            state_data = np.stack(df["observation.state"].values)
+            action_data = np.stack(df["action"].values)
+            
             stats = {
-                "observation.state": {"mean": [0.0]*7, "std": [1.0]*7},
-                "action": {"mean": [0.0]*7, "std": [1.0]*7}
+                "observation.state": {
+                    "mean": state_data.mean(axis=0).tolist(),
+                    "std": (state_data.std(axis=0) + 1e-6).tolist(), # Avoid div by zero
+                    "min": state_data.min(axis=0).tolist(),
+                    "max": state_data.max(axis=0).tolist(),
+                },
+                "action": {
+                    "mean": action_data.mean(axis=0).tolist(),
+                    "std": (action_data.std(axis=0) + 1e-6).tolist(),
+                    "min": action_data.min(axis=0).tolist(),
+                    "max": action_data.max(axis=0).tolist(),
+                }
             }
             with open(os.path.join(meta_dir, "stats.json"), "w") as f:
                 json.dump(stats, f, indent=2)

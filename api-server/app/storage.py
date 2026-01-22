@@ -26,3 +26,7 @@ class StorageClient:
 
     def download_file(self, bucket: str, object_name: str, file_path: str):
         self.client.fget_object(bucket, object_name, file_path)
+
+    def list_objects(self, bucket: str, prefix: str = None):
+        """List objects in a bucket with an optional prefix"""
+        return self.client.list_objects(bucket, prefix=prefix, recursive=True)

@@ -34,4 +34,4 @@ class RobotState(BaseModel):
 
 class DataExportRequest(BaseModel):
     episode_ids: List[int]
-    format: str = Field(default="hdf5", pattern="^(hdf5|tfrecord|webdataset)$")
+    format: str = Field(default="lerobot_v3", pattern="^(hdf5|tfrecord|webdataset|lerobot_v3)$")

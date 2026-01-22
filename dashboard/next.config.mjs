@@ -5,7 +5,7 @@ const nextConfig = {
         return [
             {
                 source: '/api/:path*',
-                destination: `${process.env.API_URL || 'http://localhost:8000'}/:path*`, // Proxy to FastAPI
+                destination: `${process.env.API_URL || 'http://api-server:8000'}/:path*`, // Proxy to FastAPI
             },
         ]
     },
